@@ -1,0 +1,32 @@
+T-SQL functions
+
+Mathematical (abs, cos, sin, pi, rand, power, ceiling,…)
+Ranking and Analytical (lag, lead, first_value, dense_rank, rank, row_number, …)
+Aggregate (avg, count, max,min, grouping, var, stdev,…)
+String (replace, ltrim, rtrim,stuff, substring, nchar, patindex,…)
+
+What about matrix() ?
+And dictionary? Tuples? Lists?
+
+Matrix
+Scripting languages (R, Python, JS, Julia, …) have matrix
+Can iterate matrix[i][y], read, write
+T-SQL ?
+CREATE TABLE
+POPULATE TABLE
+Function to get data from the table
+
+>>> Show demo with Py vs. SQL matrix
+
+
+Arrays, tuples, dictionaries
+
+a=[] or a=[[]] or a = c(1,2,3,4,3,3,1,2,1,3)
+T-SQL
+Can not declare an empty dictionary
+Create table, store results and get the results back in dictionary manner
+Does not support multiple arrays of arrays (Postgres does!)
+There are no data types as dictionaries
+T-SQL solutions:
+Tables
+Strings of values (that can be concatenated/split) in single cell
