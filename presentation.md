@@ -105,7 +105,13 @@ And dictionary? Tuples? Lists?
 - Time complexity = $O(nlog_n)$
 - Time complexity = $O(√n)$
 
+![bg right:40% 100%](imgs/bigO.png)
+
+source: https://www.bigocheatsheet.com/
+
 :satisfied: >> Demo:  Show demo with Py vs. SQL with $O(n)$
+
+<style scoped>section { font-size: 30px; }</style>
 
 ---
 
@@ -127,7 +133,7 @@ while (true)
 }
 ```
 ----
-# Input controls (user input)
+# Input controls (user input w/o loops)
 
 
 
