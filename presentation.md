@@ -11,7 +11,7 @@ footer: Data Saturday {city}, {date}
 
 ![bg left:40% 80%](https://upload.wikimedia.org/wikipedia/de/8/8c/Microsoft_SQL_Server_Logo.svg)
 
-# **Writing boardgames with T-SQL**
+# **Writing boardgames with T-SQL**
 
 T-SQL games for SQL Server and Azure SQL
 
