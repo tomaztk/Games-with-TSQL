@@ -6,7 +6,7 @@ _class: lead
 paginate: true
 backgroundColor: #fff
 backgroundImage: url('https://marp.app/assets/hero-background.svg')
-footer: Data Saturday Zagreb 2022, June 6
+footer: Data Saturday {city}, {date} 
 ---
 
 ![bg left:40% 80%](https://upload.wikimedia.org/wikipedia/de/8/8c/Microsoft_SQL_Server_Logo.svg)
@@ -21,10 +21,15 @@ http://github.com/tomaztk/t-sql-games
 
 ---
 
-# About me
+# About
 
-- ..
-- ..
+- BI Developer and Data Scientist
+- MSSQL, SAS, R, Py, C#, SAP, SPSS
+- 20+years experience MSSQL, DEV, BI, DM
+- MVP, MSCA, MCP, MCT
+- Avid coffee drinker & Bicycle junkie
+
+![bg right:40% 80%](imgs/about1.png)
 
 ---
 # Agenda
@@ -38,6 +43,7 @@ http://github.com/tomaztk/t-sql-games
     * Comparison with script languages and benchmark
 
 **Games / Demos:**
+<style scoped>section { font-size: 30px; }</style>
     - Sudoku
     - Tic-Tac-Toe
     - Mastermind
@@ -71,3 +77,22 @@ And dictionary? Tuples? Lists?
     * Function to get data from the table
 
 :satisfied: >> Demo:  Show demo with Py vs. SQL matrix
+
+---
+# Arrays/tuples and dictionaries
+
+`a=[]` or `a=[[]]` or `a = c(1,2,3,4,3,3,1,2,1,3)`
+<style scoped>section { font-size: 30px; }</style>
+
+## T-SQL limitations
+-  :-1: Can not declare an empty dictionary
+- :-1: Does not support multiple arrays of arrays (Postgres does!)
+- :-1: There are no data types as dictionaries
+
+## T-SQL "solutions" :shrug:
+- must create table, store results and get the results back in dictionary manner
+- Strings of values (that can be concatenated/split) in single cell
+
+---
+
+# Time complex problems
