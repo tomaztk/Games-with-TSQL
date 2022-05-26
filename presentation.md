@@ -96,3 +96,40 @@ And dictionary? Tuples? Lists?
 ---
 
 # Time complex problems
+
+*Time complexity is the time needed by an algorithm expressed as a function of the size of a problem.*
+
+
+- Time complexity =  $O(log2n)$ 
+- Time complexity =  $O(n2)$
+- Time complexity = $O(nlog_n)$
+- Time complexity = $O(√n)$
+
+:satisfied: >> Demo:  Show demo with Py vs. SQL with $O(n)$
+
+---
+
+# Game Loops
+
+**Quintessential example of a “game programming pattern”**
+
+### The Pattern
+A game loop runs continuously during gameplay. Each turn of the loop, it processes user input without blocking, updates the game state, and renders the game. It tracks the passage of time to control the rate of gameplay.
+
+<style scoped>section { font-size: 30px; }</style>
+
+```Python
+while (true)
+{
+  processInput();
+  update();
+  render();
+}
+```
+----
+# Input controls (user input)
+
+
+
+---
+# Quazi AI
