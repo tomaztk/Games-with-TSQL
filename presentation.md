@@ -133,9 +133,28 @@ while (true)
 }
 ```
 ----
+# Big O and loop statements
+
+- linear time loops
+- constant-time loops
+- logarithmic time loops
+- nested loop statements
+- function call statements
+- recursive function statements
+ 
+
+
+----
 # Input controls (user input w/o loops)
+
+- controlling the objects
+- continous input
+- 
 
 
 
 ---
 # Quazi AI
+
+- use of ML for gameplay of objects, obstacles, ...
+- use of ML in single-mode 
