@@ -151,6 +151,8 @@ while (true)
 - continous input
 - 
 
+---
+# Gaming economics
 
 
 ---
