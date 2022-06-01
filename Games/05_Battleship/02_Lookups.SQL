@@ -1,0 +1,11 @@
+INSERT INTO LU_Result VALUES (0,'Miss')
+INSERT INTO LU_Result VALUES (1,'Hit')
+INSERT INTO LU_Result VALUES (2,'Sunk')
+INSERT INTO LU_Result VALUES (3,'Won')
+INSERT INTO LU_Result VALUES (9,'ERROR')
+
+INSERT INTO LU_Ship VALUES (1,'Submarine',3,1)
+INSERT INTO LU_Ship VALUES (2,'Patrol Boat',2,2)
+INSERT INTO LU_Ship VALUES (3,'Cruiser',3,3)
+INSERT INTO LU_Ship VALUES (4,'Battleship',4,4)
+INSERT INTO LU_Ship VALUES (5,'Aircraft Carrier',5,5)
