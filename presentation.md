@@ -160,3 +160,10 @@ while (true)
 
 - use of ML for gameplay of objects, obstacles, ...
 - use of ML in single-mode 
+
+
+
+---
+# Games
+
+http://maxgontar-code.blogspot.com/2010/01/fun-with-sql-games-painting-puzzles.html
