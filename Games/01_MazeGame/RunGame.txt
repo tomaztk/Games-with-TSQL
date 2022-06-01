@@ -1,0 +1,27 @@
+First run:
+EXEC spNewGame
+
+This creates a new game. You can then move around the maze using
+EXEC spFowards  — Move you forwards
+EXEC spBackwards — Move you backwards
+EXEC spLeft  — Rotates you Left
+EXEC spRight — Rotates you Right 
+
+
+
+INSERT INTO Levels (LevelName, Maze, MazeWidth, MazeHeight)
+            SELECT ‘Long’,
+                        ‘1111111222’ +
+                        ‘1S100012E2’ +
+                        ‘1010101101’ +
+                        ‘1010101101’ +
+                        ‘1010101101’ +
+                        ‘1010101101’ +
+                        ‘1010101101’ +
+                        ‘1010101101’ +
+                        ‘1000100001’ +
+                        ‘1111111111’,
+                        10, 10 
+
+Will add a new level called long. To try this level run:
+EXEC spNewGame ‘Long’ 

@@ -1,0 +1,1 @@
+https://mystery.knightlab.com/

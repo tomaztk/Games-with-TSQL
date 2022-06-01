@@ -1,0 +1,158 @@
+/*
+Author:Kevin Duan, 2011-12-21 (first published: 2008-04-30)
+URL:
+https://www.sqlservercentral.com/scripts/a-sudoku-solution-with-set-based-t-sql-utilizing-binary-operators
+*/
+
+Use tempDB
+GO
+--==================================================================
+-- Step 1 Setup the auxiliary table containing possible values and their binary values
+--==================================================================
+IF OBJECT_ID(N'dbo.numBinaryDigits', N'U') IS NOT NULL DROP TABLE dbo.numBinaryDigits;
+GO
+Create table dbo.numBinaryDigits( vInt int, vBinary int)
+Declare @i int
+Set @i = 1
+While @i <= 9 Begin
+    insert into numBinaryDigits select @i, power(2, @i-1)
+    set @i = @i +1
+end
+--==================================================================
+-- Step 2: Convert a binary value to decimal list delimited by comma, for output
+--==================================================================
+IF OBJECT_ID(N'dbo.udfConvertBinaryToDecimalString', N'FN') IS NOT NULL DROP FUNCTION dbo.udfConvertBinaryToDecimalString;
+GO
+Create Function dbo.udfConvertBinaryToDecimalString (@i int) 
+returns varchar(100) 
+Begin
+    Return stuff( ( select ', '+ltrim(str(vInt)) from numBinaryDigits where @i & vBinary >0 For xml path('') ) , 1,1,'' ) 
+End
+
+GO
+--==================================================================
+-- Step 3: Create the solution procedure. @T is the original puzzle in form of 81 characters, 0 for empty cells
+--==================================================================
+IF OBJECT_ID(N'dbo.uspSolveSudoku', N'P') IS NOT NULL DROP PROCEDURE dbo.uspSolveSudoku;
+GO
+Create procedure dbo.uspSolveSudoku ( @t varchar(100), @Trace bit = 0 )
+AS
+Set nocount on
+declare @datetime datetime; 
+select @datetime = getdate();
+---------------------------------------
+--Step 1: Setup working table #s. 
+-- r for Row#, 
+-- c for Column#, 
+-- b for Block#, 
+-- v for Value
+-- d for current # of possible values
+---------------------------------------
+Create table #s ( r int, c int, b int, v int, d int)
+Declare    @i int
+set    @i = 0
+while    @i < 81 Begin
+ insert into #s 
+ select    @i/9 +1,
+    (@i % 9) +1,
+    (@i / 27)*3 + ((@i%9)/3+1) ,
+    case when substring(@t,@i+1,1)>0 then power(2, substring(@t,@i+1,1)-1) else 511 end,
+    0
+ set @i= @i + 1
+End;
+---------------------------------------
+--Step 2: Solve the puzzle. A "range" means a single row, column or block
+---------------------------------------
+Declare    @SQL varchar(2000), 
+    @SQL0 varchar(2000), 
+    @SQL1 varchar(2000), 
+    @SQL2 varchar(2000), 
+    @SQL3 varchar(2000) 
+
+-- Update the number of possible values in each cell
+Set @SQL0 = 'Update #s set d = (select count(*) from numBinaryDigits where (v & vBinary)>0);'
+-- query to eliminate determined values from un-determined cells in the same range
+Set @SQL1 = 
+'update #s set v = v - (v & sumv) 
+from ( select Range as Range1, sum(v) as sumv 
+ from #s where d = 1 
+ group by Range
+ ) as Range 
+where Range= Range1 and d >1;' + @SQL0
+-- query to determin the cell that solely contains a possible value in the same range
+Set @SQL2 = 
+'Update #s set v=VBinary 
+from ( select Range as Range1, VBinary
+ from #s cross apply (select * from numBinaryDigits where (v & vBinary)>0) as vb
+ where d >1 
+ group by Range, VBinary having count (*) =1
+ ) as t
+where (Range = Range1) and d >1 and (v & t.VBinary >0)' + @SQL0
+-- if 2 cells in the same range have the same pair of possible values, eliminate the pair of values from other cells in the same range
+Set @SQL3 = 
+'Update #s set v = v- (v & v2) 
+from ( select Range as Range1, v as v2
+ from #s 
+ where d= 2 group by Range,v having count(*) =2
+ ) as t 
+where Range1 = Range and v<> v2; ' + @SQL0
+
+Exec (@SQL0);
+Declare @Count1 smallint, -- Count of determined cells, before updates
+ @Count2 smallint, -- Count of determined cells, after updates
+ @CountSecondRuleExecTimes int ;
+Select @Count1 = 0, @CountSecondRuleExecTimes = 0;
+
+Select @Count2 = Count(*) from #s where d=1
+While @Count2 < 81 and @CountSecondRuleExecTimes < 100 Begin
+ 
+ While @Count1 <> @Count2 and @Count2 < 81 Begin
+ Select @Count1 = count(*) from #s where d = 1
+
+ Set @SQL = replace(@SQL1, 'Range','r'); Exec (@SQL); 
+ If @Trace= 1 print Char(13)+Char(10)+@SQL
+
+ Set @SQL = replace(@SQL1, 'Range','c'); Exec (@SQL); 
+ If @Trace= 1 print Char(13)+Char(10)+@SQL
+
+ Set @SQL = replace(@SQL1, 'Range','b'); Exec (@SQL); 
+ If @Trace= 1 print Char(13)+Char(10)+@SQL
+
+ Select @Count2 = count(*) from #s where d = 1
+ End
+
+ If @Count2 < 81 Begin
+ Set @SQL = replace (    case when (@CountSecondRuleExecTimes % 6) <3 then @SQL2 else @SQL3 end, 
+            'Range', 
+            case (@CountSecondRuleExecTimes % 3) when 0 then 'r' when 1 then 'c' when 2 then 'b' end)
+ If @Trace= 1 print Char(13)+Char(10)+@SQL
+ Exec (@SQL); 
+
+ Select @Count2 = count(*) from #s where d = 1
+ Select @CountSecondRuleExecTimes = @CountSecondRuleExecTimes + 1 
+ if @Count1<> @Count2 AND @Trace = 1 Print replace(@SQL, char(13)+char(10),'')
+
+ End
+End ;
+---------------------------------------
+OutputSudoku:
+---------------------------------------
+with a as (
+ select r as 'Row', c as c, v = CASE WHEN d = 1 THEN dbo.udfConvertBinaryToDecimalString(v) 
+ ELSE case @Trace when 1 then dbo.udfConvertBinaryToDecimalString(v) else '_' end 
+ END
+ from #s
+) 
+select * from a pivot ( max(v) for c in ([1],[2],[3],[4],[5],[6],[7],[8],[9]) ) as p
+
+If @Trace = 1 select datediff(ms, @datetime, getdate()), @CountSecondRuleExecTimes
+GO
+exec uspSolveSudoku '029000008030000010000520097070056100000000000006310070760041000050000020800000630' , 1
+GO
+exec uspSolveSudoku '200060000000900871740008006006080030003000100090030400300700018972005000000090002' , 1
+GO
+/* Code Clean Up
+IF OBJECT_ID(N'dbo.numBinaryDigits', N'U') IS NOT NULL DROP TABLE dbo.numBinaryDigits;
+IF OBJECT_ID(N'dbo.udfConvertBinaryToDecimalString', N'FN') IS NOT NULL DROP FUNCTION dbo.udfConvertBinaryToDecimalString;
+IF OBJECT_ID(N'dbo.uspSolveSudoku', N'P') IS NOT NULL DROP PROCEDURE dbo.uspSolveSudoku;
+*/

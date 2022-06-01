@@ -1,0 +1,846 @@
+/*
+	IMPORTANT Make sure you run this in a NEW database.
+	
+	I created a new database called MazeGame and then ran 
+	the script in there	
+	
+	URL: https://www.red-gate.com/simple-talk/blogs/a-sql-game/
+	Author: Lionel Clark, 2005
+	
+*/
+
+CREATE TABLE [dbo].[Games] (
+	[UserName] [nvarchar] (100) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL ,
+	[LevelName] [varchar] (20) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL ,
+	[PositionX] [int] NOT NULL ,
+	[PositionY] [int] NOT NULL ,
+	[Orientation] [float] NOT NULL 
+) ON [PRIMARY]
+GO
+
+CREATE TABLE [dbo].[Levels] (
+	[LevelName] [varchar] (20) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL ,
+	[Maze] [varchar] (8000) COLLATE SQL_Latin1_General_CP1_CI_AS NOT NULL ,
+	[MazeWidth] [int] NOT NULL ,
+	[MazeHeight] [int] NOT NULL 
+) ON [PRIMARY]
+GO
+
+INSERT INTO Levels (LevelName, Maze, MazeWidth, MazeHeight)
+	SELECT 'Easy', 
+		'11111222' +
+		'1S0012E2' +
+		'11101101' +
+		'10000101' +
+		'10111101' +
+		'10100101' +
+		'10000001' +
+		'11111111',
+		8,8
+
+GO
+CREATE FUNCTION MAX_DISTANCE() RETURNS INT
+AS
+BEGIN
+	RETURN 2147483647
+END
+GO
+
+CREATE FUNCTION SCREEN_HEIGHT() RETURNS INT
+AS
+BEGIN
+	RETURN 20
+END
+GO
+
+CREATE FUNCTION SCREEN_WIDTH() RETURNS INT
+AS
+BEGIN
+	RETURN 80
+END
+GO
+
+CREATE FUNCTION TILE_WIDTH() RETURNS INT
+AS
+BEGIN
+	RETURN 64
+END
+GO
+
+CREATE FUNCTION WALL_SCALE_VALUE() RETURNS INT
+AS
+BEGIN
+	RETURN 800
+END
+GO
+
+CREATE FUNCTION fnGetMapChar(
+@Maze VARCHAR(8000), 
+@MazeWidth INT, 
+@MazeHeight INT,
+@X FLOAT, 
+@Y FLOAT) RETURNS CHAR(1)
+BEGIN
+	DECLARE @MapX INT
+	DECLARE @MapY INT
+
+	SET @MapX = CONVERT(INT, (@X / dbo.TILE_WIDTH()))
+	SET @MapY = CONVERT(INT, (@Y / dbo.TILE_WIDTH()))
+	
+	DECLARE @Offset INT
+	
+	SET @Offset = (@MazeWidth * @MapY) + @MapX
+
+	DECLARE @Char CHAR(1)
+
+	SET @Char = SUBSTRING(@Maze, @Offset + 1, 1)
+
+	RETURN 	@Char
+END
+GO
+
+CREATE FUNCTION fnGetScreenOffset(
+@X INT,
+@Y INT
+) RETURNS INT
+AS
+BEGIN
+	RETURN (@Y * dbo.SCREEN_WIDTH()) + @X
+END
+GO
+
+CREATE FUNCTION fnIsExit(
+@Maze VARCHAR(8000), 
+@MazeWidth INT, 
+@MazeHeight INT,
+@X FLOAT, 
+@Y FLOAT) RETURNS BIT
+BEGIN
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = 'E')
+	BEGIN
+		RETURN 1
+	END
+	
+	RETURN 0	
+END
+GO
+
+CREATE FUNCTION fnIsHorizontalWall(
+@Maze VARCHAR(8000), 
+@MazeWidth INT, 
+@MazeHeight INT,
+@X FLOAT, 
+@Y FLOAT) RETURNS INT
+BEGIN
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '1')
+	BEGIN
+		RETURN 1
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '2')
+	BEGIN
+		RETURN 2
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y - 1) = '1')
+	BEGIN
+		RETURN 1
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y - 1) = '2')
+	BEGIN
+		RETURN 2
+	END
+
+	RETURN 0
+END
+GO
+
+CREATE FUNCTION fnIsSolid(
+@Maze VARCHAR(8000), 
+@MazeWidth INT, 
+@MazeHeight INT,
+@X FLOAT, 
+@Y FLOAT) RETURNS BIT
+BEGIN
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '1'
+		OR dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '2')
+	BEGIN
+		RETURN 1
+	END
+	
+	RETURN 0	
+END
+GO
+
+CREATE FUNCTION fnIsVerticalWall(
+@Maze VARCHAR(8000), 
+@MazeWidth INT, 
+@MazeHeight INT,
+@X FLOAT, 
+@Y FLOAT) RETURNS INT
+BEGIN
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '1')
+	BEGIN
+		RETURN 1
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X, @Y) = '2')
+	BEGIN
+		RETURN 2
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X - 1, @Y) = '1')
+	BEGIN
+		RETURN 1
+	END
+	IF(dbo.fnGetMapChar(@Maze, @MazeWidth, @MazeHeight, @X - 1, @Y) = '2')
+	BEGIN
+		RETURN 2
+	END
+
+	RETURN 0
+END
+GO
+
+CREATE FUNCTION fnNormalizeAngle(@Angle FLOAT) RETURNS FLOAT
+BEGIN
+	WHILE(@Angle < 0)
+	BEGIN
+		SET @Angle = @Angle + (2*PI());
+	END
+	
+	WHILE(@Angle > 2*PI())
+	BEGIN
+		SET @Angle = @Angle - (2*PI());
+	END
+	
+	RETURN @Angle;
+END
+GO
+
+CREATE PROCEDURE spBackwards
+AS
+-- Position details
+DECLARE @PositionX INT
+DECLARE @PositionY INT
+DECLARE @Orientation FLOAT
+
+-- Level details
+DECLARE @Maze VARCHAR(8000)
+DECLARE @MazeWidth INT
+DECLARE @MazeHeight INT
+
+SELECT 
+	@PositionX = PositionX,
+	@PositionY = PositionY,
+	@Orientation = Orientation,
+	@Maze = Maze,
+	@MazeWidth = MazeWidth,
+	@MazeHeight = MazeHeight
+FROM Games
+INNER JOIN Levels
+	ON Games.LevelName = Levels.LevelName
+WHERE Games.UserName = USER_NAME()
+
+IF(@@RowCount = 0)
+BEGIN
+	RAISERROR('You need to start a new game by calling spNewGame', 16, 1)
+	RETURN
+END
+
+
+IF(dbo.fnIsExit(@Maze, @MazeWidth, @MazeHeight, @PositionX, @PositionY) = 1)
+BEGIN
+	EXEC spRender
+	RETURN
+END
+
+DECLARE @NewX INT
+DECLARE @NewY INT
+
+SET @NewX = @PositionX
+SET @NewY = @PositionY
+
+IF(@Orientation = 0)
+BEGIN
+	SET @NewX = @PositionX - dbo.TILE_WIDTH()
+END
+ELSE IF(@Orientation = (PI() / 2)) 
+BEGIN			
+	SET @NewY = @PositionY - dbo.TILE_WIDTH()
+END
+ELSE IF(@Orientation = PI()) 
+BEGIN			
+	SET @NewX = @PositionX + dbo.TILE_WIDTH()
+END
+ELSE
+BEGIN
+	SET @NewY = @PositionY + dbo.TILE_WIDTH()
+END
+
+IF(dbo.fnIsSolid(@Maze, @MazeWidth, @MazeHeight, @NewX, @NewY) = 0)
+BEGIN
+	SET @PositionX = @NewX
+	SET @PositionY = @NewY
+END
+
+SET NOCOUNT ON
+
+UPDATE Games SET 
+	PositionX = @PositionX, 
+	PositionY = @PositionY 
+WHERE UserName = USER_NAME()
+
+SET NOCOUNT OFF
+
+EXEC spRender
+GO
+
+CREATE PROCEDURE spDrawStrip 
+@Screen VARCHAR(8000) OUT, 
+@Strip INT, 
+@Wall_height INT, 
+@Texture CHAR(1)
+AS
+
+DECLARE @i INT
+
+IF(@Wall_height < dbo.SCREEN_HEIGHT())
+BEGIN
+	--for(int i = 0; i < wall_height; i++)
+	SET @i = 0
+	WHILE(@i < @Wall_height)
+	BEGIN
+		SET @Screen = STUFF(@Screen, dbo.fnGetScreenOffset(@Strip, @I + ((dbo.SCREEN_HEIGHT() - @Wall_height)) / 2) + 1, 1, @Texture)
+		SET @i = @i + 1
+	END
+END
+ELSE
+BEGIN
+	SET @i = 0
+	WHILE(@i < dbo.SCREEN_HEIGHT())
+	BEGIN
+		SET @Screen = STUFF(@Screen, dbo.fnGetScreenOffset(@Strip, @I) + 1, 1, @Texture)
+		SET @i = @i + 1
+	END
+END
+GO
+
+CREATE PROCEDURE spDrawWalls
+-- Position details
+@PositionX INT,
+@PositionY INT,
+@Orientation FLOAT,
+-- Level details
+@Maze VARCHAR(8000),
+@MazeWidth INT,
+@MazeHeight INT,
+-- Screen
+@Screen VARCHAR(8000) OUT
+AS
+
+SET @Screen = SPACE(dbo.SCREEN_HEIGHT() * dbo.SCREEN_WIDTH()) + 'END'
+
+------------------------------------------------------------------
+-- Cast a ray for each strip
+------------------------------------------------------------------
+DECLARE @Fov FLOAT
+DECLARE @RayAngle FLOAT
+DECLARE @RayDelta FLOAT
+
+-- The Field of view is set to 100 Degrees. This gives slight fish eye efect when 
+-- you look at a wall but gives better visibility
+SET @Fov = ((PI()*100)/180)
+SET @RayAngle = dbo.fnNormalizeAngle(@Orientation - (@Fov / 2))
+SET @RayDelta = @Fov / dbo.SCREEN_WIDTH()
+
+--for(int strip=0; strip < SCREEN_WIDTH; strip++, rayAngle = NormalizeAngle(rayAngle + rayDelta)) 
+DECLARE @Strip INT
+SET @Strip = 0
+WHILE(@Strip < dbo.SCREEN_WIDTH())
+BEGIN
+	DECLARE @Horizontal_texture INT
+	SET @Horizontal_texture = 0
+	DECLARE @Horizontal_x FLOAT
+	DECLARE @Horizontal_y FLOAT
+	DECLARE @Horizontal_step_x FLOAT
+	DECLARE @Horizontal_step_y FLOAT
+	DECLARE @Vertical_texture INT
+	SET @Vertical_texture = 0
+	DECLARE @Vertical_x FLOAT
+	DECLARE @Vertical_y FLOAT
+	DECLARE @Vertical_step_x FLOAT
+	DECLARE @Vertical_step_y FLOAT
+	
+	EXEC spSetupIntersecionParams 
+			       @CameraX = @PositionX,
+			       @CameraY = @PositionY,
+	                       @Angle = @RayAngle,
+	                       @Horizontal_x = @Horizontal_x OUT,
+	                       @Horizontal_y = @Horizontal_y OUT,
+	                       @Horizontal_step_x = @Horizontal_step_x OUT,
+	                       @Horizontal_step_y = @Horizontal_step_y OUT,
+	                       @Vertical_x = @Vertical_x OUT,
+	                       @Vertical_y = @Vertical_y OUT,
+	                       @Vertical_step_x = @Vertical_step_x OUT,
+	                       @Vertical_step_y = @Vertical_step_y OUT
+	
+	DECLARE @Horizontal_hit_dist FLOAT
+	DECLARE @Vertical_hit_dist FLOAT
+	
+	
+	------------------------------------------------------------------------
+	-- find nearest horizontal intersection ...
+	------------------------------------------------------------------------
+	WHILE(1=1) 
+	BEGIN
+		IF(@Horizontal_x < 0 OR @Horizontal_x > (@MazeWidth * dbo.TILE_WIDTH()) - 1
+			OR @Horizontal_y < 0 OR @Horizontal_y > (@MazeHeight * dbo.TILE_WIDTH()) - 1)
+		BEGIN
+			---------------------------------------------------------------
+			-- We ran out of the map. Set hit distance to maximum and break
+			---------------------------------------------------------------
+			SET @Horizontal_hit_dist = dbo.MAX_DISTANCE()
+			BREAK
+		END
+		ELSE 
+		BEGIN
+			SET @Horizontal_texture = dbo.fnIsHorizontalWall(
+						@Maze, @MazeWidth, @MazeHeight,
+						@Horizontal_x, @Horizontal_y)
+
+			IF(@Horizontal_texture <> 0) 
+			BEGIN
+				---------------------------------------------------------------
+				-- We found a non-zero square. Calculate distance and break
+				---------------------------------------------------------------
+				SET @Horizontal_hit_dist = SQRT(POWER(@Horizontal_x - @PositionX, 2) +
+								POWER(@Horizontal_y - @PositionY, 2))
+				BREAK
+			END
+			ELSE 
+			BEGIN
+				SET @Horizontal_x = @Horizontal_x + @Horizontal_step_x;
+				SET @Horizontal_y = @Horizontal_y + @Horizontal_step_y;
+			END
+		END
+	END
+	
+	
+	------------------------------------------------------------------------
+	-- find nearest vertical intersection ...
+	------------------------------------------------------------------------
+	WHILE(1=1)
+	BEGIN
+		IF(@Vertical_x < 0 OR @Vertical_x > (@MazeWidth *  dbo.TILE_WIDTH())-1 OR
+		   @Vertical_y < 0 OR @Vertical_y > (@MazeHeight * dbo.TILE_WIDTH())-1)
+		BEGIN
+			---------------------------------------------------------------
+			-- We ran out of the map. Set hit distance to maximum and break
+			---------------------------------------------------------------
+			SET @Vertical_hit_dist = dbo.MAX_DISTANCE()
+			BREAK
+		END
+		ELSE 
+		BEGIN
+			SET @Vertical_texture = dbo.fnIsVerticalWall(
+					@Maze, @MazeWidth, @MazeHeight,
+					@Vertical_x, @Vertical_y)
+
+			IF(@Vertical_texture <> 0)
+			BEGIN
+				---------------------------------------------------------------
+				-- We found a non-zero square. Calculate distance and break
+				---------------------------------------------------------------
+				SET @Vertical_hit_dist = SQRT(
+					POWER(@Vertical_x - @PositionX, 2) +
+					POWER(@Vertical_y - @PositionY, 2))
+				BREAK
+			END
+			ELSE
+			BEGIN
+				SET @Vertical_x = @Vertical_x + @Vertical_step_x;
+				SET @Vertical_y = @Vertical_y + @Vertical_step_y;
+			END
+		END
+	END
+
+
+	------------------------------------------------------------------------
+	-- compare distances and draw vertical wall strip ...
+	------------------------------------------------------------------------
+	DECLARE @Wall_height INT
+	DECLARE @Texture CHAR(1)
+
+	IF(@Horizontal_hit_dist <= @Vertical_hit_dist) 
+	BEGIN
+		-- use horizontal intersection
+		SET @Wall_height = CONVERT(INT, dbo.WALL_SCALE_VALUE() / @Horizontal_hit_dist)
+		
+		IF(@Horizontal_texture = 1)
+			SET @Texture = '|'
+		ELSE
+			SET @Texture = 'E'
+
+		EXEC spDrawStrip @Screen = @Screen OUT, @Strip = @Strip, @Wall_height = @Wall_height, @Texture = @Texture
+	END
+	ELSE
+	BEGIN
+		-- use vertical intersection
+		SET @Wall_height = CONVERT(INT, dbo.WALL_SCALE_VALUE() / @Vertical_hit_dist)
+		
+		IF(@Vertical_texture = 1)
+			SET @Texture = '-'
+		ELSE
+			SET @Texture = 'E'
+
+		EXEC spDrawStrip @Screen = @Screen OUT, @Strip = @Strip, @Wall_height = @Wall_height, @Texture = @Texture
+	END
+
+	-- Move to the next strip
+	SET @Strip = @Strip + 1
+	SET @RayAngle = dbo.fnNormalizeAngle(@RayAngle + @RayDelta)
+END
+GO
+
+CREATE PROCEDURE spFowards
+AS
+-- Position details
+DECLARE @PositionX INT
+DECLARE @PositionY INT
+DECLARE @Orientation FLOAT
+
+-- Level details
+DECLARE @Maze VARCHAR(8000)
+DECLARE @MazeWidth INT
+DECLARE @MazeHeight INT
+
+SELECT 
+	@PositionX = PositionX,
+	@PositionY = PositionY,
+	@Orientation = Orientation,
+	@Maze = Maze,
+	@MazeWidth = MazeWidth,
+	@MazeHeight = MazeHeight
+FROM Games
+INNER JOIN Levels
+	ON Games.LevelName = Levels.LevelName
+WHERE Games.UserName = USER_NAME()
+
+IF(@@RowCount = 0)
+BEGIN
+	RAISERROR('You need to start a new game by calling spNewGame', 16, 1)
+	RETURN
+END
+
+
+IF(dbo.fnIsExit(@Maze, @MazeWidth, @MazeHeight, @PositionX, @PositionY) = 1)
+BEGIN
+	EXEC spRender
+	RETURN
+END
+
+DECLARE @NewX INT
+DECLARE @NewY INT
+
+SET @NewX = @PositionX
+SET @NewY = @PositionY
+
+IF(@Orientation = 0)
+BEGIN
+	SET @NewX = @PositionX + dbo.TILE_WIDTH()
+END
+ELSE IF(@Orientation = (PI() / 2)) 
+BEGIN			
+	SET @NewY = @PositionY + dbo.TILE_WIDTH()
+END
+ELSE IF(@Orientation = PI()) 
+BEGIN			
+	SET @NewX = @PositionX - dbo.TILE_WIDTH()
+END
+ELSE
+BEGIN
+	SET @NewY = @PositionY - dbo.TILE_WIDTH()
+END
+
+IF(dbo.fnIsSolid(@Maze, @MazeWidth, @MazeHeight, @NewX, @NewY) = 0)
+BEGIN
+	SET @PositionX = @NewX
+	SET @PositionY = @NewY
+END
+
+SET NOCOUNT ON
+
+UPDATE Games SET 
+	PositionX = @PositionX, 
+	PositionY = @PositionY 
+WHERE UserName = USER_NAME()
+
+SET NOCOUNT OFF
+
+EXEC spRender
+GO
+
+CREATE PROCEDURE spLeft
+AS
+DECLARE @Orientation FLOAT
+
+SELECT @Orientation = Orientation FROM Games WHERE UserName = USER_NAME()
+
+IF(@Orientation >= (PI() / 2))
+BEGIN
+	SET @Orientation = @Orientation - (PI() / 2);
+END
+ELSE
+BEGIN
+	SET @Orientation = (PI() * 3) / 2;
+END
+
+SET NOCOUNT ON
+UPDATE Games SET Orientation = @Orientation  WHERE UserName = USER_NAME()
+SET NOCOUNT OFF
+
+EXEC spRender
+GO
+
+CREATE PROCEDURE spNewGame
+@LevelName VARCHAR(20) = 'Easy'
+AS
+
+DECLARE @Maze VARCHAR(8000)
+DECLARE @MazeWidth INT
+DECLARE @MazeHeight INT
+
+SELECT 
+	@Maze = Maze,
+	@MazeWidth = MazeWidth,
+	@MazeHeight = MazeHeight
+FROM Levels WHERE LevelName = @LevelName
+
+IF(@@RowCount = 0)
+BEGIN
+	RAISERROR('Level doesn''t exist', 16, 1)
+	RETURN
+END
+
+DECLARE @PositionX INT
+DECLARE @PositionY INT
+DECLARE @Offset INT 
+
+SET @Offset = CHARINDEX('S', @Maze) - 1
+
+SET @PositionX = (@Offset % @MazeWidth * dbo.TILE_WIDTH()) + (dbo.TILE_WIDTH() / 2);
+SET @PositionY = ((@Offset / @MazeWidth) * dbo.TILE_WIDTH()) + (dbo.TILE_WIDTH() / 2);
+
+SET NOCOUNT ON
+
+DELETE FROM Games WHERE UserName = USER_NAME()
+
+INSERT INTO Games(UserName, LevelName, PositionX, PositionY, Orientation)
+	SELECT USER_NAME(), @LevelName, @PositionX, @PositionY, 0
+
+SET NOCOUNT OFF
+
+EXEC spRender
+GO
+
+CREATE PROCEDURE spRender
+AS
+SET NOCOUNT ON 
+
+DECLARE @Screen VARCHAR(8000)
+
+-- Position details
+DECLARE @PositionX INT
+DECLARE @PositionY INT
+DECLARE @Orientation FLOAT
+
+-- Level details
+DECLARE @Maze VARCHAR(8000)
+DECLARE @MazeWidth INT
+DECLARE @MazeHeight INT
+
+SELECT 
+	@PositionX = PositionX,
+	@PositionY = PositionY,
+	@Orientation = Orientation,
+	@Maze = Maze,
+	@MazeWidth = MazeWidth,
+	@MazeHeight = MazeHeight
+FROM Games
+INNER JOIN Levels
+	ON Games.LevelName = Levels.LevelName
+WHERE Games.UserName = USER_NAME()
+
+IF(@@RowCount = 0)
+BEGIN
+	RAISERROR('You need to start a new game by calling spNewGame', 16, 1)
+	RETURN
+END
+
+IF(dbo.fnIsExit(@Maze, @MazeWidth, @MazeHeight, @PositionX, @PositionY) = 1)
+BEGIN
+	SELECT 'Congratulations you have finished the maze.'
+	RETURN
+END
+
+EXEC spDrawWalls
+	@PositionX = @PositionX,
+	@PositionY = @PositionY,
+	@Orientation = @Orientation,
+	@Maze = @Maze,
+	@MazeWidth = @MazeWidth,
+	@MazeHeight = @MazeHeight,
+	@Screen = @Screen OUT
+
+DECLARE @Results TABLE
+(
+	Line VARCHAR(80)
+)
+
+DECLARE @i INT
+SET @i = 0
+WHILE(@i < dbo.SCREEN_HEIGHT())
+BEGIN
+	INSERT INTO @Results(Line)
+		SELECT SUBSTRING(@Screen, dbo.SCREEN_WIDTH() * @i, dbo.SCREEN_WIDTH())
+
+	SET @i = @i + 1
+END
+
+SELECT * FROM @Results
+
+SET NOCOUNT OFF
+GO
+
+CREATE PROCEDURE spRight
+AS
+DECLARE @Orientation FLOAT
+
+SELECT @Orientation = Orientation FROM Games WHERE UserName = USER_NAME()
+
+IF(@Orientation <= PI())
+BEGIN
+	SET @Orientation = @Orientation + (PI() / 2);
+END
+ELSE
+BEGIN
+	SET @Orientation = 0;
+END
+
+SET NOCOUNT ON 
+UPDATE Games SET Orientation = @Orientation  WHERE UserName = USER_NAME()
+SET NOCOUNT OFF
+
+EXEC spRender
+GO
+
+CREATE PROCEDURE spSetupIntersecionParams
+@CameraX FLOAT,
+@CameraY FLOAT,
+@Angle FLOAT,
+@Horizontal_x FLOAT OUT,
+@Horizontal_y FLOAT OUT,
+@Horizontal_step_x FLOAT OUT,
+@Horizontal_step_y FLOAT OUT,
+@Vertical_x FLOAT OUT,
+@Vertical_y FLOAT OUT,
+@Vertical_step_x FLOAT OUT,
+@Vertical_step_y FLOAT OUT
+AS
+
+-----------------------------------------------------------------------
+-- angle 0 to 89 degrees - parameter setup ...
+-----------------------------------------------------------------------
+IF(@Angle < (PI() / 2)) 
+BEGIN			
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with horizontal lines
+	-------------------------------------------------------------------
+	SET @Horizontal_step_x = (dbo.TILE_WIDTH() / TAN(@Angle))
+	SET @Horizontal_step_y = dbo.TILE_WIDTH()
+	
+	SET @Horizontal_x = (@CameraX + ((dbo.TILE_WIDTH() / 2) / TAN(@Angle)))
+	SET @Horizontal_y = @CameraY + (dbo.TILE_WIDTH() / 2)
+	
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with vertical lines
+	-------------------------------------------------------------------
+	SET @Vertical_step_x = dbo.TILE_WIDTH()
+	SET @Vertical_step_y = dbo.TILE_WIDTH() * TAN(@Angle)
+	
+	SET @Vertical_x = @CameraX + (dbo.TILE_WIDTH() / 2)
+	SET @Vertical_y = (@CameraY + ((dbo.TILE_WIDTH() / 2) * TAN(@Angle)))
+END
+-----------------------------------------------------------------------
+-- angle 90 to 179 degrees - parameter setup ...
+-----------------------------------------------------------------------
+ELSE IF(@Angle < PI()) 
+BEGIN				
+	SET @Angle = @Angle - (PI() / 2)
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with horizontal lines
+	-------------------------------------------------------------------
+	SET @Horizontal_step_x = -(dbo.TILE_WIDTH() * TAN(@Angle))
+	SET @Horizontal_step_y = dbo.TILE_WIDTH()
+	
+	SET @Horizontal_x = (@CameraX - ((dbo.TILE_WIDTH() / 2) * TAN(@Angle)))
+	SET @Horizontal_y = @CameraY + (dbo.TILE_WIDTH() / 2)
+	
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with vertical lines
+	-------------------------------------------------------------------
+	SET @Vertical_step_x = -dbo.TILE_WIDTH()
+	SET @Vertical_step_y = (dbo.TILE_WIDTH() / TAN(@Angle))
+	
+	SET @Vertical_x = @CameraX - (dbo.TILE_WIDTH() / 2)
+	SET @Vertical_y = (@CameraY + ((dbo.TILE_WIDTH() / 2) / TAN(@Angle)))
+END
+-----------------------------------------------------------------------
+-- angle 180 to 259 degrees - parameter setup ...
+-----------------------------------------------------------------------
+ELSE IF(@angle < ((PI() * 3) / 2)) 
+BEGIN
+	SET @Angle = @Angle - PI()
+			
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with horizontal lines
+	-------------------------------------------------------------------
+	SET @Horizontal_step_x = - (dbo.TILE_WIDTH() / TAN(@Angle))
+	SET @Horizontal_step_y = - dbo.TILE_WIDTH()
+	
+	SET @Horizontal_x = (@CameraX - ((dbo.TILE_WIDTH() / 2) / TAN(@Angle)))
+	SET @Horizontal_y = @CameraY - (dbo.TILE_WIDTH() / 2)
+	
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with vertical lines
+	-------------------------------------------------------------------
+	SET @Vertical_step_x = -dbo.TILE_WIDTH()
+	SET @Vertical_step_y = -(dbo.TILE_WIDTH() * TAN(@Angle))
+	
+	SET @Vertical_x = @CameraX - (dbo.TILE_WIDTH() / 2)
+	SET @Vertical_y = (@CameraY - ((dbo.TILE_WIDTH() / 2) * TAN(@Angle)))
+END
+-----------------------------------------------------------------------
+-- angle 270 to 359 degrees - parameter setup ...
+-----------------------------------------------------------------------
+ELSE
+BEGIN
+	SET @Angle = @Angle - (PI() * 3) / 2
+	
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with horizontal lines
+	-------------------------------------------------------------------
+	SET @Horizontal_step_x = (dbo.TILE_WIDTH() * TAN(@Angle))
+	SET @Horizontal_step_y = -dbo.TILE_WIDTH()
+	
+	SET @Horizontal_x = (@CameraX + ((dbo.TILE_WIDTH() / 2) * TAN(@Angle)))
+	SET @Horizontal_y = @CameraY - (dbo.TILE_WIDTH() / 2)
+	
+	-------------------------------------------------------------------
+	-- setup parameters for intersections with vertical lines
+	-------------------------------------------------------------------
+	SET @Vertical_step_x = dbo.TILE_WIDTH()
+	SET @Vertical_step_y = -(dbo.TILE_WIDTH() / TAN(@Angle))
+	
+	SET @Vertical_x = @CameraX + (dbo.TILE_WIDTH() / 2)
+	SET @Vertical_y = (@CameraY - ((dbo.TILE_WIDTH() / 2) / TAN(@Angle)))
+END
+
+GO
