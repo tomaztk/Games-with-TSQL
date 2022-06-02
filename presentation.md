@@ -21,6 +21,13 @@ http://github.com/tomaztk/t-sql-games
 
 ---
 
+![bg](slides_template/DataSaturdayCroatia2022_sponsor1.png)
+
+---
+
+![bg](slides_template/DataSaturdayCroatia2022_sponsor2.png)
+___
+
 # About
 
 - BI Developer and Data Scientist
@@ -162,6 +169,58 @@ while (true)
 - use of ML in single-mode 
 
 
+---
+# Idle Games
+
+_Concept of Idle games is based on exponential math!_
+
+
+Gameplay: 
+<style scoped>section { font-size: 27px; }</style>
+1. User is performing action = clickling {item1, item2}
+2. Clicking is generating game currency {coins, diamonds, upgrades}
+3. Making progress a.k.a. **progression wall** {upgrades become more expensive, not so accessible to the player}
+
+![bg right:50% w:500](imgs/IdleGames1.png)
+
+---
+# Idle Games  - Elements & T-SQL equvivalents
+
+<style scoped>section { font-size: 25px; }</style>
+
+Game loop can be achieved with following patterns. 
+
+_Clicking:_ Is the way of gameplay. Clicking will get user to ugrades but game will stop (go idle) if not clicked for longer time.
+
+_Currency:_ The main mode of purchasing upgrades, generators, multipliers, and bonuses. Can also be main goal of the game.
+
+_Upgrades:_ Ways to improve currency production in exchange for large sums of currency. 
+
+_Generators:_ Tools that generate currency on a specified time interval.
+
+_Prestige/Ascencion/New Game Plus_: Reset all current progress in exchange for powerful upgrades, mighty multipliers, or other bonuses next time user plays.
+
+_Run:_ A run in an idle game is the gameplay from game start to the prestige. So whenever a player performs a prestige, they start a new run.
+
+---
+# Idle Games  - Exponential function
+
+<style scoped>section { font-size: 25px; }</style>
+Growth of a function f(x) is a simple way to explain how fast the value of the function (cost of upgrades, generators, income per second, …) increases with x (number of generators, level of upgrades, …)
+
+y = x vs. y = 0.1x² and remember Big (O) Notation ...
+
+**Goal game**: Gather as much wood as possible with 1 log. Each time user click, generates 1 item wood.
+
+Example: Every click generates additional Item
+Initial Cost = 10 coins
+Growth Rabe: 15% per Level
+Cost at Level 5/20/100
+
+Hire an agent: generates 10 items per second
+initial cost=100 cois
+Growth rate = 7% per Level
+Cost at 5/20/100 for agents: 131/361/81.095
 
 ---
 # Games
