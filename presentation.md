@@ -6,7 +6,7 @@ _class: lead
 paginate: true
 backgroundColor: #fff
 backgroundImage: url('https://marp.app/assets/hero-background.svg')
-footer: Data Saturday {city}, {date} 
+footer: Data Saturday {Zagreb}, {04.JUN.2022} 
 ---
 
 ![bg left:40% 80%](https://upload.wikimedia.org/wikipedia/de/8/8c/Microsoft_SQL_Server_Logo.svg)
@@ -121,6 +121,17 @@ source: https://www.bigocheatsheet.com/
 <style scoped>section { font-size: 30px; }</style>
 
 ---
+# Time complex problems with T-SQL
+
+- SELECT statement without index (assuming table scan) would be $O(n)$
+- SELECT with index (assuming table seek) would be $O(log_n)$
+
+
+<style scoped>section { font-size: 30px; }</style>
+** These are only estimates!
+
+---
+
 
 # Game Loops
 
@@ -156,18 +167,45 @@ while (true)
 
 - controlling the objects
 - continous input
-- 
+- Keyboard, Yoke, Mouse, Trackball, gamepad, paddle, ... ?
 
+```sql
+EXEC usp_PlayTicTacToe 'a2', 'x'
+--OR
+EXEC ttt_PlayerMove O,C,2;
+-- OR
+EXEC dbo.get_grid  @x0 ,@y0, @w OUT
+```
 ---
 # Gaming economics
+
+- A/B Testing 
+- Making game playable (Rookie, Competent, Expert) 
+- Gathering game statistics
+
+---
+# T-SQL hiccups
+
+- Game loop
+- Remotes
+- T-SQL errors
+    - counting NULLS
+    - string operations (concatenate NULLS)
+    - NOT IN for nullables
+    - Implicit conversions
 
 
 ---
 # Quazi AI
 
+
 - use of ML for gameplay of objects, obstacles, ...
 - use of ML in single-mode 
+- Slow "AI" and long IF-ELSE statements
 
+![bg right:50% w:500](imgs/AI_TicTacToe.png)
+
+:satisfied: >> Demo: Example with Tic-Tac-Toe
 
 ---
 # Idle Games
@@ -225,4 +263,31 @@ Cost at 5/20/100 for agents: 131/361/81.095
 ---
 # Games
 
-http://maxgontar-code.blogspot.com/2010/01/fun-with-sql-games-painting-puzzles.html
+- Sudoku
+- Tic-Tac-Toe
+- Mastermind
+- Battleship
+- Tic-Tac-Toe
+- Walking through the maze
+- Classical (Mystery, maze,…)
+- Tower of Hanoi
+
+---
+# Bonus: Drawings
+
+- Spatial
+- ASCII
+
+
+---
+
+# Thanks
+
+Feel free to get in touch!
+
+Demos, slides: Github:
+
+[https://t.ly/vVm2](https://github.com/tomaztk/Games-with-TSQL)
+
+
+![bg right 100%](imgs/about1.png)
