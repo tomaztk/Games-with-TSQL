@@ -126,6 +126,8 @@ source: https://www.bigocheatsheet.com/
 - SELECT statement without index (assuming table scan) would be $O(n)$
 - SELECT with index (assuming table seek) would be $O(log_n)$
 
+- UPDATE statements
+- INSERT statements
 
 <style scoped>section { font-size: 30px; }</style>
 ** These are only estimates!
@@ -261,16 +263,16 @@ Growth rate = 7% per Level
 Cost at 5/20/100 for agents: 131/361/81.095
 
 ---
-# Games
+# Games Demo
 
-- Sudoku
+- Sudoku -> [Github Repo for T-SQL](https://github.com/tomaztk/Sudoku_sql_game)
 - Tic-Tac-Toe
 - Mastermind
 - Battleship
-- Tic-Tac-Toe
+- 2048 -> [Github Repo for T-SQL](https://github.com/tomaztk/2048_sql_game)
 - Classical (Mystery, maze, Walking through the maze)
-- Tower of Hanoi
-- Wordle :)
+- Tower of Hanoi -> [Github Repo for T-SQL](https://github.com/tomaztk/Tower_of_Hanoi_sql_game)
+- TSQL Wordle -> [Github Repo for T-SQL](https://github.com/tomaztk/tsqlwordle)
 
 ---
 # Bonus: Drawings
@@ -291,3 +293,7 @@ Demos, slides: Github:
 
 
 ![bg right 100%](imgs/about1.png)
+
+
+
+
