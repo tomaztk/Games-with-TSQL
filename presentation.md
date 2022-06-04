@@ -268,9 +268,9 @@ Cost at 5/20/100 for agents: 131/361/81.095
 - Mastermind
 - Battleship
 - Tic-Tac-Toe
-- Walking through the maze
-- Classical (Mystery, maze,…)
+- Classical (Mystery, maze, Walking through the maze)
 - Tower of Hanoi
+- Wordle :)
 
 ---
 # Bonus: Drawings
