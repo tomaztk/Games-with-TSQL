@@ -1,3 +1,6 @@
+USE db_pyblog;
+go
+
 /*Object: StoredProcedure [dbo].[usp_New_Game] Script Date: 02/23/2008 16:35:24 ******/IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[usp_New_Game]') AND type in (N'P', N'PC'))
 DROP PROCEDURE [dbo].[usp_New_Game]
 GO
