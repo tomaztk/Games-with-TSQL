@@ -24,6 +24,11 @@ http://github.com/tomaztk/t-sql-games
 
 ![bg](slides_template/SQLStart2022_sponsor1.png)
 
+- UGISS
+- Universita Politecnica Delle Marche
+
+
+A big Thank you!!!
 ___
 
 # About
