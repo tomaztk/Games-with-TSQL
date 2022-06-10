@@ -6,7 +6,7 @@ _class: lead
 paginate: true
 backgroundColor: #fff
 backgroundImage: url('https://marp.app/assets/hero-background.svg')
-footer: Data Saturday {Zagreb}, {04.JUN.2022} 
+footer: Data Saturday {SQL Start! 2022}, {10.JUN.2022} 
 ---
 
 ![bg left:40% 80%](https://upload.wikimedia.org/wikipedia/de/8/8c/Microsoft_SQL_Server_Logo.svg)
@@ -20,12 +20,10 @@ T-SQL games for SQL Server and Azure SQL
 http://github.com/tomaztk/t-sql-games
 
 ---
+# Sponsors
 
-![bg](slides_template/DataSaturdayCroatia2022_sponsor1.png)
+![bg](slides_template/SQLStart2022_sponsor1.png)
 
----
-
-![bg](slides_template/DataSaturdayCroatia2022_sponsor2.png)
 ___
 
 # About
